@@ -1,0 +1,1991 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using XLiConnect.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    ViewData["Title"] = "Chats";
+
+    ApplicationUser? currentUser = null;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+    }
+
+    var currentUserId = currentUser?.Id ?? "";
+
+    var displayName =
+        currentUser?.DisplayName ??
+        currentUser?.UserName ??
+        User.Identity?.Name ??
+        "User";
+
+    var initial = string.IsNullOrWhiteSpace(displayName)
+        ? "U"
+        : displayName.Substring(0, 1).ToUpperInvariant();
+
+    var chattedUsers =
+        ViewBag.ChattedUsers as List<ApplicationUser>
+        ?? new List<ApplicationUser>();
+
+    var otherUsers =
+        ViewBag.OtherUsers as List<ApplicationUser>
+        ?? new List<ApplicationUser>();
+
+    var allUsers = chattedUsers
+        .Concat(otherUsers)
+        .Distinct()
+        .ToList();
+
+    int unreadSendersCount =
+        ViewBag.UnreadSendersCount != null
+            ? (int)ViewBag.UnreadSendersCount
+            : 0;
+
+    var unreadCountsByUser =
+        ViewBag.UnreadCountsByUser
+        as Dictionary<string, int>
+        ?? new Dictionary<string, int>();
+
+    var latestMessagesByUser =
+        ViewBag.LatestMessagesByUser
+        as Dictionary<string, string>
+        ?? new Dictionary<string, string>();
+
+    var latestMessageTimesByUser =
+        ViewBag.LatestMessageTimesByUser
+        as Dictionary<string, DateTime>
+        ?? new Dictionary<string, DateTime>();
+}
+
+<style>
+
+    .xli-chat-dashboard {
+        background: #f0f2f5;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #111b21;
+        min-height: calc(100vh - 80px);
+        display: flex;
+        flex-direction: column;
+        padding: 16px 24px;
+        box-sizing: border-box;
+    }
+
+    .xli-top-navbar {
+        max-width: 1350px;
+        width: 100%;
+        margin: 0 auto 16px auto;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px 24px;
+        box-shadow: 0 2px 5px rgba(11, 20, 26, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .xli-user-profile-badge {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: #111b21;
+        font-weight: 600;
+    }
+
+    .xli-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .xli-avatar-placeholder {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #00a884;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    .xli-nav-links {
+        display: flex;
+        list-style: none;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .xli-nav-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        color: #54656f;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .xli-nav-link:hover,
+    .xli-nav-link.active {
+        background: #f0f2f5;
+        color: #00a884;
+    }
+
+    .xli-badge-counter {
+        background: #00a884;
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    .xli-logout-btn {
+        background: #fee2e2;
+        color: #991b1b;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+    }
+
+    .xli-logout-btn:hover {
+        background: #fecaca;
+    }
+
+    .xli-workspace {
+        max-width: 1350px;
+        width: 100%;
+        height: calc(100vh - 180px);
+        min-height: 600px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(11, 20, 26, 0.08);
+        display: flex;
+        overflow: hidden;
+        border: 1px solid #e9edef;
+    }
+
+    .xli-sidebar {
+        width: 400px;
+        border-right: 1px solid #e9edef;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+    }
+
+    .xli-search-box-wrapper {
+        padding: 14px 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9edef;
+    }
+
+    .xli-search-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .xli-search-input {
+        width: 100%;
+        padding: 10px 14px 10px 40px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .xli-search-input:focus {
+        border-color: #00a884;
+    }
+
+    .xli-search-input-container i {
+        position: absolute;
+        left: 14px;
+        color: #8696a0;
+    }
+
+    .xli-contacts-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    .xli-contact-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        text-decoration: none;
+        color: inherit;
+        margin-bottom: 2px;
+    }
+
+    .xli-contact-item:hover {
+        background: #f5f6f6;
+    }
+
+    .xli-contact-item.active {
+        background: #e9edef;
+    }
+
+    .xli-contact-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .xli-contact-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .xli-contact-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #111b21;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .xli-contact-handle {
+        font-size: 0.8rem;
+        color: #667781;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /*
+        Latest message preview.
+
+        Blue as requested.
+    */
+
+    .xli-latest-message {
+        margin-top: 2px;
+        color: #0d6efd;
+        font-size: 0.78rem;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 235px;
+    }
+
+    /*
+        Time/date shown outside the chat,
+        next to the contact.
+    */
+
+    .xli-contact-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: flex-start;
+        gap: 5px;
+        min-width: 58px;
+        margin-left: 8px;
+        align-self: stretch;
+    }
+
+    .xli-contact-time {
+        color: #667781;
+        font-size: 0.72rem;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+
+    .xli-contact-right .xli-badge-counter {
+        margin-top: 2px;
+    }
+
+    .xli-main-content-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #efeae2;
+        position: relative;
+    }
+
+    .xli-welcome-screen {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+        background: #f8f9fa;
+        color: #667781;
+    }
+
+    .xli-welcome-screen i {
+        font-size: 4rem;
+        color: #00a884;
+        margin-bottom: 20px;
+        opacity: 0.8;
+    }
+
+    .xli-preview-card {
+        background: #ffffff;
+        border: 1px solid #e9edef;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 320px;
+        width: 100%;
+    }
+
+    .xli-preview-avatar {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .xli-preview-avatar-placeholder {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: #00a884;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 700;
+    }
+
+    .xli-start-chat-btn {
+        background: #00a884;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-decoration: none;
+    }
+
+    .xli-start-chat-btn:hover {
+        background: #01755c;
+    }
+
+    .xli-chat-bubble {
+        max-width: 65%;
+        padding: 8px 10px 6px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        word-break: break-word;
+        font-size: 0.95rem;
+        box-shadow: 0 1px 0.5px rgba(11,20,26,0.13);
+        position: relative;
+    }
+
+    .xli-chat-bubble.sent {
+        background: #d9fdd3;
+        color: #111b21;
+        margin-left: auto;
+        border-top-right-radius: 0;
+    }
+
+    .xli-chat-bubble.received {
+        background: #ffffff;
+        color: #111b21;
+        margin-right: auto;
+        border-top-left-radius: 0;
+    }
+
+    .xli-message-content {
+        display: inline;
+        line-height: 1.4;
+    }
+
+    .xli-message-time {
+        display: inline-block;
+        margin-left: 8px;
+        color: #667781;
+        font-size: 0.68rem;
+        white-space: nowrap;
+        vertical-align: bottom;
+        position: relative;
+        top: 2px;
+    }
+
+    .xli-date-separator {
+        align-self: center;
+        background: #ffffff;
+        color: #54656f;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 8px;
+        margin: 10px 0 14px 0;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+
+    .xli-empty-notice {
+        text-align: center;
+        padding: 30px;
+        color: #8696a0;
+        font-style: italic;
+    }
+
+    .xli-status-reply-preview {
+        display: block;
+        width: 130px;
+        margin-bottom: 8px;
+        padding: 5px;
+        background: rgba(255, 255, 255, 0.75);
+        border-left: 3px solid #00a884;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .xli-status-reply-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 5px;
+        color: #667781;
+        font-size: 0.68rem;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+
+    .xli-status-reply-image {
+        display: block;
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 5px;
+    }
+
+    @@media (max-width: 900px) {
+
+        .xli-chat-dashboard {
+            padding: 10px;
+        }
+
+        .xli-sidebar {
+            width: 300px;
+        }
+
+        .xli-top-navbar {
+            padding: 10px 14px;
+        }
+
+        .xli-nav-link {
+            padding: 8px 10px;
+        }
+
+        .xli-latest-message {
+            max-width: 170px;
+        }
+
+        .xli-contact-time {
+            font-size: 0.68rem;
+        }
+
+    }
+
+</style>
+
+<div class="xli-chat-dashboard">
+
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <header class="xli-top-navbar">
+
+            <a asp-controller="Home"
+               asp-action="Index"
+               class="xli-user-profile-badge">
+
+                @if (currentUser != null &&
+                     !string.IsNullOrWhiteSpace(currentUser.ProfilePicturePath))
+                {
+                    <img src="@currentUser.ProfilePicturePath"
+                         alt="@displayName"
+                         class="xli-avatar" />
+                }
+                else
+                {
+                    <span class="xli-avatar-placeholder">
+                        @initial
+                    </span>
+                }
+
+                <span>@displayName</span>
+
+            </a>
+
+            <nav aria-label="Main navigation">
+
+                <ul class="xli-nav-links">
+
+                    <li>
+                        <a asp-controller="Chats"
+                           asp-action="Index"
+                           class="xli-nav-link active">
+
+                            <i class="fas fa-comments"></i>
+
+                            Chats
+
+                            <span class="xli-badge-counter"
+                                  id="navUnreadBadge"
+                                  style="@(unreadSendersCount > 0 ? "" : "display: none;")">
+
+                                @unreadSendersCount
+
+                            </span>
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a asp-controller="Statuses"
+                           asp-action="Index"
+                           class="xli-nav-link">
+
+                            <i class="fas fa-circle-play"></i>
+
+                            Status
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="xli-nav-link">
+
+                            <i class="fas fa-user"></i>
+
+                            Profile
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="xli-nav-link">
+
+                            <i class="fas fa-gear"></i>
+
+                            Settings
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="xli-nav-link">
+
+                            <i class="fas fa-shield-halved"></i>
+
+                            Privacy
+
+                        </a>
+                    </li>
+
+                </ul>
+
+            </nav>
+
+            <form asp-controller="Account"
+                  asp-action="Logout"
+                  method="post"
+                  class="m-0">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit"
+                        class="xli-logout-btn">
+
+                    <i class="fas fa-sign-out-alt"></i>
+
+                    Log Out
+
+                </button>
+
+            </form>
+
+        </header>
+    }
+
+    <div class="xli-workspace">
+
+        <aside class="xli-sidebar">
+
+            <div class="xli-search-box-wrapper">
+
+                <div class="xli-search-input-container">
+
+                    <i class="fas fa-search"></i>
+
+                    <input type="text"
+                           id="userSearchInput"
+                           class="xli-search-input"
+                           placeholder="Search or start a new chat..."
+                           onkeyup="filterUsers()" />
+
+                </div>
+
+            </div>
+
+            <div class="xli-contacts-scroll">
+
+                <div id="unifiedUserList">
+
+                    @if (allUsers.Any())
+                    {
+                        @foreach (var u in allUsers)
+                        {
+                            var uName =
+                                u.DisplayName ??
+                                u.UserName ??
+                                "User";
+
+                            var uUserName =
+                                u.UserName ?? "";
+
+                            var uInitial =
+                                string.IsNullOrWhiteSpace(uName)
+                                    ? "U"
+                                    : uName
+                                        .Substring(0, 1)
+                                        .ToUpperInvariant();
+
+                            var pPic =
+                                u.ProfilePicturePath ?? "";
+
+                            int userUnreadCount =
+                                unreadCountsByUser.ContainsKey(u.Id)
+                                    ? unreadCountsByUser[u.Id]
+                                    : 0;
+
+                            string latestMessage = "";
+
+                            if (latestMessagesByUser.ContainsKey(u.Id))
+                            {
+                                latestMessage =
+                                    latestMessagesByUser[u.Id] ?? "";
+                            }
+
+                            DateTime? latestMessageTime = null;
+
+                            if (latestMessageTimesByUser.ContainsKey(u.Id))
+                            {
+                                latestMessageTime =
+                                    latestMessageTimesByUser[u.Id];
+                            }
+
+                            <div class="xli-contact-item searchable-item"
+                                 data-name="@uName.ToLower()"
+                                 data-username="@uUserName.ToLower()"
+                                 data-userid="@u.Id"
+                                 onclick="selectUser('@u.Id', '@uName', '@uUserName', '@pPic', '@uInitial')">
+
+                                <div class="xli-contact-left">
+
+                                    @if (!string.IsNullOrWhiteSpace(u.ProfilePicturePath))
+                                    {
+                                        <img src="@u.ProfilePicturePath"
+                                             alt="@uName"
+                                             class="xli-avatar"
+                                             style="width: 38px; height: 38px;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="xli-avatar-placeholder"
+                                              style="width: 38px; height: 38px; font-size: 14px;">
+
+                                            @uInitial
+
+                                        </span>
+                                    }
+
+                                    <div class="xli-contact-info">
+
+                                        <span class="xli-contact-name">
+                                            @uName
+                                        </span>
+
+                                        <span class="xli-contact-handle">
+                                            @uUserName
+                                        </span>
+
+                                        @if (!string.IsNullOrWhiteSpace(latestMessage))
+                                        {
+                                            var previewMessage =
+                                                latestMessage.Length > 25
+                                                    ? latestMessage.Substring(0, 25) + "....."
+                                                    : latestMessage;
+
+                                            <span class="xli-latest-message"
+                                                  data-latest-message="@latestMessage">
+                                                @previewMessage
+                                            </span>
+                                        }
+
+                                    </div>
+
+                                </div>
+
+                                <div class="xli-contact-right">
+
+                                    @if (latestMessageTime.HasValue)
+                                    {
+                                        <span class="xli-contact-time"
+                                              data-latest-time="@latestMessageTime.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                        </span>
+                                    }
+
+                                    <span class="xli-badge-counter user-unread-badge-@u.Id"
+                                          style="@(userUnreadCount > 0 ? "" : "display: none;")">
+
+                                        @userUnreadCount
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="xli-empty-notice">
+
+                            No contacts available
+
+                        </div>
+                    }
+
+                </div>
+
+            </div>
+
+        </aside>
+
+        <main class="xli-main-content-panel"
+              id="chatMainWindow">
+
+            <div class="xli-welcome-screen">
+
+                <i class="fas fa-comments"></i>
+
+                <h3 style="margin: 0 0 8px 0; color: #111b21; font-weight: 600;">
+
+                    XLiConnect Messaging
+
+                </h3>
+
+                <p style="margin: 0; color: #667781; font-size: 0.95rem;">
+
+                    Select a contact from the sidebar to begin your secure conversation.
+
+                </p>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+<script>
+
+    const currentUserId = '@currentUserId';
+
+    let activeRecipientId = null;
+
+    let pollInterval = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        fetchUnreadCount();
+
+        formatAllContactTimes();
+
+    });
+
+    function fetchUnreadCount() {
+
+        fetch('/Chats/GetUnreadCount')
+
+            .then(response => response.json())
+
+            .then(data => {
+
+                let badge =
+                    document.getElementById('navUnreadBadge');
+
+                if (badge) {
+
+                    if (data.unreadCount > 0) {
+
+                        badge.innerText =
+                            data.unreadCount;
+
+                        badge.style.display =
+                            'inline-block';
+
+                    }
+                    else {
+
+                        badge.style.display =
+                            'none';
+
+                    }
+
+                }
+
+            })
+
+            .catch(err =>
+                console.error(
+                    "Error fetching unread count:",
+                    err
+                )
+            );
+    }
+
+    /*
+        Formats all timestamps shown next to contacts.
+
+        Today:
+            13:42
+
+        Yesterday:
+            Yesterday
+
+        Older:
+            24/09/2026
+    */
+    function formatAllContactTimes() {
+
+        let timeElements =
+            document.querySelectorAll(
+                '.xli-contact-time'
+            );
+
+        timeElements.forEach(element => {
+
+            let utcTime =
+                element.getAttribute(
+                    'data-latest-time'
+                );
+
+            if (!utcTime) {
+                return;
+            }
+
+            let dateObject =
+                parseUtcDate(utcTime);
+
+            if (
+                !dateObject ||
+                isNaN(dateObject.getTime())
+            ) {
+
+                return;
+            }
+
+            element.innerText =
+                formatContactTime(dateObject);
+
+        });
+    }
+
+    function formatContactTime(dateObject) {
+
+        let now =
+            new Date();
+
+        let todayKey =
+            getLocalDateKey(now);
+
+        let yesterday =
+            new Date(now);
+
+        yesterday.setDate(
+            yesterday.getDate() - 1
+        );
+
+        let yesterdayKey =
+            getLocalDateKey(yesterday);
+
+        let messageDateKey =
+            getLocalDateKey(dateObject);
+
+        /*
+            If the latest message was today,
+            show only the time.
+        */
+        if (
+            messageDateKey ===
+            todayKey
+        ) {
+
+            return new Intl.DateTimeFormat(
+                undefined,
+                {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }
+            ).format(dateObject);
+        }
+
+        /*
+            If the latest message was yesterday,
+            show Yesterday.
+        */
+        if (
+            messageDateKey ===
+            yesterdayKey
+        ) {
+
+            return "Yesterday";
+        }
+
+        /*
+            Older conversations show the date.
+        */
+        return new Intl.DateTimeFormat(
+            undefined,
+            {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }
+        ).format(dateObject);
+    }
+
+    function filterUsers() {
+
+        let input =
+            document.getElementById('userSearchInput')
+                .value
+                .toLowerCase()
+                .trim();
+
+        let items =
+            document.querySelectorAll('.searchable-item');
+
+        items.forEach(item => {
+
+            let name =
+                item.getAttribute('data-name') || '';
+
+            let username =
+                item.getAttribute('data-username') || '';
+
+            if (
+                name.includes(input) ||
+                username.includes(input)
+            ) {
+
+                item.style.display =
+                    'flex';
+
+            }
+            else {
+
+                item.style.display =
+                    'none';
+
+            }
+
+        });
+    }
+
+    function selectUser(
+        id,
+        name,
+        username,
+        profilePic,
+        initial
+    ) {
+
+        activeRecipientId = id;
+
+        let mainWindow =
+            document.getElementById(
+                'chatMainWindow'
+            );
+
+        let avatarHtml = '';
+
+        if (
+            profilePic &&
+            profilePic.trim() !== ''
+        ) {
+
+            avatarHtml =
+                '<img src="' +
+                escapeHtml(profilePic) +
+                '" alt="' +
+                escapeHtml(name) +
+                '" class="xli-preview-avatar" />';
+
+        }
+        else {
+
+            avatarHtml =
+                '<div class="xli-preview-avatar-placeholder">' +
+                    escapeHtml(initial) +
+                '</div>';
+        }
+
+        mainWindow.innerHTML =
+            '<div class="xli-welcome-screen">' +
+
+                '<div class="xli-preview-card">' +
+
+                    avatarHtml +
+
+                    '<div>' +
+
+                        '<h4 style="margin: 0 0 4px 0; color: #111b21; font-weight: 700; font-size: 1.1rem;">' +
+
+                            escapeHtml(name) +
+
+                        '</h4>' +
+
+                        '<span style="color: #667781; font-size: 0.85rem;">' +
+
+                            escapeHtml(username) +
+
+                        '</span>' +
+
+                    '</div>' +
+
+                    '<button type="button"' +
+                            ' class="xli-start-chat-btn"' +
+                            ' onclick="openMessageInterface(\'' +
+                                escapeJs(id) +
+                            '\', \'' +
+                                escapeJs(name) +
+                            '\', \'' +
+                                escapeJs(username) +
+                            '\')">' +
+
+                        '<i class="fas fa-paper-plane"' +
+                           ' style="margin-right: 6px;"></i>' +
+
+                        'Open Chat' +
+
+                    '</button>' +
+
+                '</div>' +
+
+            '</div>';
+
+        document
+            .querySelectorAll(
+                '.xli-contact-item'
+            )
+            .forEach(el =>
+                el.classList.remove('active')
+            );
+
+        let selectedItem =
+            document.querySelector(
+                ".xli-contact-item[data-userid='" +
+                CSS.escape(id) +
+                "']"
+            );
+
+        if (selectedItem) {
+
+            selectedItem.classList.add('active');
+
+            let badge =
+                selectedItem.querySelector(
+                    ".user-unread-badge-" +
+                    CSS.escape(id)
+                );
+
+            if (badge) {
+
+                badge.style.display =
+                    'none';
+
+                badge.innerText =
+                    '0';
+
+            }
+        }
+
+        fetch(
+            '/Chats/GetMessages?recipientId=' +
+            encodeURIComponent(id)
+        )
+            .then(() =>
+                fetchUnreadCount()
+            );
+    }
+
+    function openMessageInterface(
+        id,
+        name,
+        username
+    ) {
+
+        activeRecipientId = id;
+
+        let mainWindow =
+            document.getElementById(
+                'chatMainWindow'
+            );
+
+        mainWindow.innerHTML =
+
+            '<div style="' +
+                'display: flex;' +
+                'flex-direction: column;' +
+                'height: 100%;' +
+                'width: 100%;' +
+                'text-align: left;">' +
+
+                '<div style="' +
+                    'padding: 12px 20px;' +
+                    'border-bottom: 1px solid #e9edef;' +
+                    'font-weight: 600;' +
+                    'color: #111b21;' +
+                    'background: #f0f2f5;' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'gap: 12px;">' +
+
+                    '<i class="fas fa-user-circle"' +
+                       ' style="font-size: 1.8rem; color: #00a884; margin: 0;"></i>' +
+
+                    '<div>' +
+
+                        '<div style="font-size: 0.95rem;">' +
+
+                            escapeHtml(name) +
+
+                        '</div>' +
+
+                        '<div style="' +
+                            'font-size: 0.75rem;' +
+                            'color: #667781;' +
+                            'font-weight: normal;">' +
+
+                            escapeHtml(username) +
+
+                        '</div>' +
+
+                    '</div>' +
+
+                '</div>' +
+
+                '<div id="messageContainer"' +
+                     ' style="' +
+                        'flex: 1;' +
+                        'padding: 20px;' +
+                        'overflow-y: auto;' +
+                        'background: #efeae2;' +
+                        'display: flex;' +
+                        'flex-direction: column;">' +
+
+                    '<div style="' +
+                        'text-align: center;' +
+                        'color: #667781;' +
+                        'font-size: 0.8rem;' +
+                        'margin-bottom: 15px;' +
+                        'background: #ffffff;' +
+                        'padding: 6px 12px;' +
+                        'border-radius: 8px;' +
+                        'align-self: center;' +
+                        'box-shadow: 0 1px 1px rgba(0,0,0,0.05);">' +
+
+                        '<span>' +
+
+                            'Messages are end-to-end safe. Type below to chat.' +
+
+                        '</span>' +
+
+                    '</div>' +
+
+                '</div>' +
+
+                '<div style="' +
+                    'padding: 12px 16px;' +
+                    'background: #f0f2f5;' +
+                    'border-top: 1px solid #e9edef;' +
+                    'display: flex;' +
+                    'gap: 10px;' +
+                    'align-items: center;">' +
+
+                    '<input type="text" ' +
+                        'id="chatMessageInput" ' +
+                        'placeholder="Type a message..." ' +
+                        'style="' +
+                            'flex: 1;' +
+                            'padding: 10px 16px;' +
+                            'border-radius: 8px;' +
+                            'border: 1px solid #e2e8f0;' +
+                            'outline: none;' +
+                            'background: #ffffff;' +
+                            'font-size: 0.9rem;" ' +
+                        'onkeypress="handleKeyPress(event)" />' +
+
+                    '<button type="button" ' +
+                            'onclick="sendMessage()" ' +
+                            'style="' +
+                                'background: #00a884;' +
+                                'color: white;' +
+                                'border: none;' +
+                                'width: 42px;' +
+                                'height: 42px;' +
+                                'border-radius: 50%;' +
+                                'display: flex;' +
+                                'align-items: center;' +
+                                'justify-content: center;' +
+                                'cursor: pointer;' +
+                                'transition: background 0.2s;">' +
+
+                        '<i class="fas fa-paper-plane"' +
+                           ' style="font-size: 0.9rem;"></i>' +
+
+                    '</button>' +
+
+                '</div>' +
+
+            '</div>';
+
+        let selectedItem =
+            document.querySelector(
+                ".xli-contact-item[data-userid='" +
+                CSS.escape(id) +
+                "']"
+            );
+
+        if (selectedItem) {
+
+            let badge =
+                selectedItem.querySelector(
+                    ".user-unread-badge-" +
+                    CSS.escape(id)
+                );
+
+            if (badge) {
+
+                badge.style.display =
+                    'none';
+
+                badge.innerText =
+                    '0';
+
+            }
+        }
+
+        loadMessages();
+
+        if (pollInterval) {
+
+            clearInterval(
+                pollInterval
+            );
+
+        }
+
+        pollInterval =
+            setInterval(
+                loadMessages,
+                3000
+            );
+    }
+
+    function loadMessages() {
+
+        if (!activeRecipientId) {
+            return;
+        }
+
+        fetch(
+            '/Chats/GetMessages?recipientId=' +
+            encodeURIComponent(
+                activeRecipientId
+            )
+        )
+
+            .then(response => {
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Failed to load messages."
+                    );
+
+                }
+
+                return response.json();
+
+            })
+
+            .then(data => {
+
+                let container =
+                    document.getElementById(
+                        'messageContainer'
+                    );
+
+                if (!container) {
+                    return;
+                }
+
+                /*
+                    Update the outside contact preview
+                    and its time using the latest message.
+                */
+                if (data.length > 0) {
+
+                    let latestMessage =
+                        data[data.length - 1];
+
+                    if (
+                        latestMessage &&
+                        latestMessage.content &&
+                        latestMessage.sentAt
+                    ) {
+
+                        updateContactPreview(
+                            activeRecipientId,
+                            latestMessage.content,
+                            latestMessage.sentAt
+                        );
+                    }
+                }
+
+                let isAtBottom =
+                    container.scrollHeight -
+                    container.scrollTop <=
+                    container.clientHeight + 50;
+
+                let html =
+
+                    '<div style="' +
+                        'text-align: center;' +
+                        'color: #667781;' +
+                        'font-size: 0.8rem;' +
+                        'margin-bottom: 15px;' +
+                        'background: #ffffff;' +
+                        'padding: 6px 12px;' +
+                        'border-radius: 8px;' +
+                        'align-self: center;' +
+                        'box-shadow: 0 1px 1px rgba(0,0,0,0.05);">' +
+
+                        '<span>' +
+
+                            'Messages are end-to-end safe. Type below to chat.' +
+
+                        '</span>' +
+
+                    '</div>';
+
+                let lastDateKey = null;
+
+                data.forEach(msg => {
+
+                    if (!msg.sentAt) {
+                        return;
+                    }
+
+                    let dateObject =
+                        parseUtcDate(
+                            msg.sentAt
+                        );
+
+                    if (
+                        !dateObject ||
+                        isNaN(
+                            dateObject.getTime()
+                        )
+                    ) {
+
+                        return;
+                    }
+
+                    let dateKey =
+                        getLocalDateKey(
+                            dateObject
+                        );
+
+                    if (
+                        dateKey !==
+                        lastDateKey
+                    ) {
+
+                        html +=
+
+                            '<div class="xli-date-separator">' +
+
+                                formatMessageDate(
+                                    dateObject
+                                ) +
+
+                            '</div>';
+
+                        lastDateKey =
+                            dateKey;
+                    }
+
+                    let bubbleClass =
+                        msg.senderId === currentUserId
+                            ? 'sent'
+                            : 'received';
+
+                    let formattedTime =
+                        formatMessageTime(
+                            dateObject
+                        );
+
+                    let statusReplyHtml = '';
+
+                    if (msg.statusImagePath) {
+
+                        statusReplyHtml =
+
+                            '<div class="xli-status-reply-preview">' +
+
+                                '<div class="xli-status-reply-label">' +
+
+                                    '<i class="fas fa-reply"></i>' +
+
+                                    '<span>Replied to status</span>' +
+
+                                '</div>' +
+
+                                '<img ' +
+
+                                    'src="' +
+                                        escapeHtml(
+                                            msg.statusImagePath
+                                        ) +
+                                    '"' +
+
+                                    'class="xli-status-reply-image"' +
+
+                                    'alt="Status replied to" />' +
+
+                            '</div>';
+                    }
+
+                    html +=
+
+                        '<div class="xli-chat-bubble ' +
+                            bubbleClass +
+                        '">' +
+
+                            statusReplyHtml +
+
+                            '<span class="xli-message-content">' +
+
+                                escapeHtml(
+                                    msg.content
+                                ) +
+
+                            '</span>' +
+
+                            '<span class="xli-message-time">' +
+
+                                formattedTime +
+
+                            '</span>' +
+
+                        '</div>';
+
+                });
+
+                container.innerHTML =
+                    html;
+
+                if (isAtBottom) {
+
+                    container.scrollTop =
+                        container.scrollHeight;
+
+                }
+
+            })
+
+            .catch(err =>
+                console.error(
+                    "Error loading messages:",
+                    err
+                )
+            );
+    }
+
+    /*
+        Updates the latest-message preview and timestamp
+        in the contact list without requiring a page reload.
+    */
+    function updateContactPreview(
+        userId,
+        messageContent,
+        sentAt
+    ) {
+
+        let contact =
+            document.querySelector(
+                ".xli-contact-item[data-userid='" +
+                CSS.escape(userId) +
+                "']"
+            );
+
+        if (!contact) {
+            return;
+        }
+
+        let preview =
+            contact.querySelector(
+                '.xli-latest-message'
+            );
+
+        let previewMessage =
+            messageContent || '';
+
+        if (previewMessage.length > 25) {
+
+            previewMessage =
+                previewMessage.substring(
+                    0,
+                    25
+                ) + ".....";
+        }
+
+        if (preview) {
+
+            preview.innerText =
+                previewMessage;
+
+            preview.setAttribute(
+                'data-latest-message',
+                messageContent
+            );
+
+        }
+        else if (previewMessage.trim() !== '') {
+
+            let info =
+                contact.querySelector(
+                    '.xli-contact-info'
+                );
+
+            if (info) {
+
+                let newPreview =
+                    document.createElement(
+                        'span'
+                    );
+
+                newPreview.className =
+                    'xli-latest-message';
+
+                newPreview.setAttribute(
+                    'data-latest-message',
+                    messageContent
+                );
+
+                newPreview.innerText =
+                    previewMessage;
+
+                info.appendChild(
+                    newPreview
+                );
+            }
+        }
+
+        let timeElement =
+            contact.querySelector(
+                '.xli-contact-time'
+            );
+
+        if (!timeElement) {
+
+            let rightSide =
+                contact.querySelector(
+                    '.xli-contact-right'
+                );
+
+            if (rightSide) {
+
+                timeElement =
+                    document.createElement(
+                        'span'
+                    );
+
+                timeElement.className =
+                    'xli-contact-time';
+
+                rightSide.insertBefore(
+                    timeElement,
+                    rightSide.firstChild
+                );
+            }
+        }
+
+        if (timeElement) {
+
+            timeElement.setAttribute(
+                'data-latest-time',
+                sentAt
+            );
+
+            let dateObject =
+                parseUtcDate(sentAt);
+
+            if (
+                dateObject &&
+                !isNaN(dateObject.getTime())
+            ) {
+
+                timeElement.innerText =
+                    formatContactTime(
+                        dateObject
+                    );
+            }
+        }
+    }
+
+    function sendMessage() {
+
+        let input =
+            document.getElementById(
+                'chatMessageInput'
+            );
+
+        if (
+            !input ||
+            input.value.trim() === '' ||
+            !activeRecipientId
+        ) {
+
+            return;
+        }
+
+        let content =
+            input.value.trim();
+
+        input.value = '';
+
+        fetch('/Chats/SendMessage', {
+
+            method: 'POST',
+
+            headers: {
+
+                'Content-Type':
+                    'application/json',
+
+                'RequestVerificationToken':
+                    document.querySelector(
+                        'input[name="__RequestVerificationToken"]'
+                    )?.value || ''
+
+            },
+
+            body: JSON.stringify({
+
+                recipientId:
+                    activeRecipientId,
+
+                Content:
+                    content
+
+            })
+
+        })
+
+            .then(response => {
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Message could not be sent."
+                    );
+
+                }
+
+                return response.json();
+
+            })
+
+            .then(result => {
+
+                if (result.success) {
+
+                    /*
+                        Immediately update the outside
+                        contact preview and timestamp.
+                    */
+                    updateContactPreview(
+                        activeRecipientId,
+                        content,
+                        result.sentAt
+                    );
+
+                    loadMessages();
+
+                }
+                else {
+
+                    console.error(
+                        "Message was not sent."
+                    );
+
+                }
+
+            })
+
+            .catch(err => {
+
+                console.error(
+                    "Error sending message:",
+                    err
+                );
+
+            });
+    }
+
+    function handleKeyPress(e) {
+
+        if (e.key === 'Enter') {
+
+            e.preventDefault();
+
+            sendMessage();
+
+        }
+
+    }
+
+    function parseUtcDate(sentAt) {
+
+        if (!sentAt) {
+            return null;
+        }
+
+        let value =
+            sentAt.toString().trim();
+
+        if (
+            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(
+                value
+            )
+        ) {
+
+            value =
+                value.replace(
+                    ' ',
+                    'T'
+                ) + 'Z';
+
+        }
+        else if (
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(
+                value
+            )
+        ) {
+
+            value += 'Z';
+
+        }
+
+        return new Date(value);
+    }
+
+    function formatMessageTime(dateObject) {
+
+        return new Intl.DateTimeFormat(
+            undefined,
+            {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }
+        ).format(dateObject);
+    }
+
+    function getLocalDateKey(dateObject) {
+
+        return [
+
+            dateObject.getFullYear(),
+
+            String(
+                dateObject.getMonth() + 1
+            ).padStart(
+                2,
+                '0'
+            ),
+
+            String(
+                dateObject.getDate()
+            ).padStart(
+                2,
+                '0'
+            )
+
+        ].join('-');
+    }
+
+    function formatMessageDate(dateObject) {
+
+        let today =
+            new Date();
+
+        let yesterday =
+            new Date();
+
+        yesterday.setDate(
+            today.getDate() - 1
+        );
+
+        let messageDateKey =
+            getLocalDateKey(
+                dateObject
+            );
+
+        let todayKey =
+            getLocalDateKey(
+                today
+            );
+
+        let yesterdayKey =
+            getLocalDateKey(
+                yesterday
+            );
+
+        if (
+            messageDateKey ===
+            todayKey
+        ) {
+
+            return "Today";
+        }
+
+        if (
+            messageDateKey ===
+            yesterdayKey
+        ) {
+
+            return "Yesterday";
+        }
+
+        return new Intl.DateTimeFormat(
+            undefined,
+            {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }
+        ).format(dateObject);
+    }
+
+    function escapeHtml(text) {
+
+        if (
+            text === null ||
+            text === undefined
+        ) {
+
+            return '';
+        }
+
+        let map = {
+
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+
+        };
+
+        return String(text).replace(
+
+            /[&<>"']/g,
+
+            function (m) {
+                return map[m];
+            }
+
+        );
+    }
+
+    function escapeJs(text) {
+
+        if (
+            text === null ||
+            text === undefined
+        ) {
+
+            return '';
+        }
+
+        return String(text)
+
+            .replace(
+                /\\/g,
+                '\\\\'
+            )
+
+            .replace(
+                /'/g,
+                "\\'"
+            )
+
+            .replace(
+                /\r/g,
+                '\\r'
+            )
+
+            .replace(
+                /\n/g,
+                '\\n'
+            );
+    }
+
+</script>

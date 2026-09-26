@@ -1,0 +1,580 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using XLiConnect.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    ViewData["Title"] = "Welcome";
+
+    ApplicationUser? currentUser = null;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+    }
+
+    var displayName = currentUser?.DisplayName ?? currentUser?.UserName ?? User.Identity?.Name ?? "User";
+
+    var initial = string.IsNullOrWhiteSpace(displayName)
+        ? "U"
+        : displayName.Substring(0, 1).ToUpperInvariant();
+}
+
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .page-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 85vh;
+    }
+
+    .top-bar {
+        width: 100%;
+        max-width: 1100px;
+        margin: 1.5rem auto 1rem auto;
+        min-height: 72px;
+        padding: 10px 24px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 168, 132, 0.15);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #111b21;
+        font-weight: 600;
+        text-decoration: none;
+        min-width: 180px;
+    }
+
+    .profile-img,
+    .profile-initial {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        border-radius: 50%;
+    }
+
+    .profile-img {
+        object-fit: cover;
+    }
+
+    .profile-initial {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #00a884;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .nav-tabs-custom {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .nav-link-custom {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 14px;
+        border-radius: 8px;
+        color: #54656f;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background-color .2s, color .2s;
+    }
+
+    .nav-link-custom:hover {
+        color: #00a884;
+        background: rgba(0, 168, 132, .08);
+    }
+
+    .xli-nav-unread-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        margin-left: 2px;
+        background: #00a884;
+        color: #ffffff;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .nav-logout-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 15px;
+        border: 0;
+        border-radius: 8px;
+        background: #dc3545;
+        color: #fff;
+        font-weight: 600;
+        transition: background-color .2s;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .nav-logout-btn:hover {
+        background: #bb2d3b;
+        color: #fff;
+    }
+
+    .xli-hero-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('/images/happyconnect.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        padding: 2rem 1rem;
+        border-radius: 24px;
+        margin: 0 1rem 1rem 1rem;
+    }
+
+    .xli-hero-card {
+        width: 100%;
+        max-width: 580px;
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+        padding: 3rem 2.5rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(13, 110, 253, 0.15);
+        text-align: center;
+    }
+
+    .xli-hero-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #0d6efd, #00a884, #20c997);
+    }
+
+    .xli-brand-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .xli-logo-img {
+        max-width: 240px;
+        height: auto;
+        margin-bottom: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .xli-title {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.025em;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+
+    .xli-description {
+        font-size: 1.15rem;
+        color: #475569;
+        line-height: 1.7;
+        margin-bottom: 2.5rem;
+    }
+
+    .xli-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .xli-btn-primary {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #0d6efd;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.9rem 1.5rem;
+        border-radius: 12px;
+        text-decoration: none;
+        box-shadow: 0 10px 20px rgba(13, 110, 253, 0.25);
+        transition: all 0.2s ease;
+        border: none;
+    }
+
+    .xli-btn-primary:hover {
+        background: #0b5ed7;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 24px rgba(13, 110, 253, 0.35);
+    }
+
+    .xli-btn-outline {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: transparent;
+        color: #0f172a;
+        font-weight: 600;
+        padding: 0.9rem 1.5rem;
+        border-radius: 12px;
+        text-decoration: none;
+        border: 2px solid #cbd5e1;
+        transition: all 0.2s ease;
+    }
+
+    .xli-btn-outline:hover {
+        border-color: #0d6efd;
+        color: #0d6efd;
+        background: rgba(13, 110, 253, 0.04);
+        transform: translateY(-2px);
+    }
+
+    .xli-btn-danger {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #fee2e2;
+        color: #dc2626;
+        font-weight: 600;
+        padding: 0.9rem 1.5rem;
+        border-radius: 12px;
+        text-decoration: none;
+        border: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .xli-btn-danger:hover {
+        background: #dc2626;
+        color: #ffffff;
+        transform: translateY(-2px);
+    }
+
+    @@media (max-width: 900px) {
+        .top-bar {
+            flex-direction: column;
+            gap: 15px;
+            padding: 15px;
+            margin: 1rem;
+            width: calc(100% - 2rem);
+        }
+
+        .nav-tabs-custom {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .xli-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="page-container">
+
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <div class="top-bar">
+
+            <a asp-controller="Home" asp-action="Index" class="user-info">
+
+                @if (currentUser != null && !string.IsNullOrWhiteSpace(currentUser.ProfilePicturePath))
+                {
+                    <img src="@currentUser.ProfilePicturePath"
+                         alt="@displayName's profile picture"
+                         class="profile-img" />
+                }
+                else
+                {
+                    <span class="profile-initial">@initial</span>
+                }
+
+                <span>@displayName</span>
+
+            </a>
+
+            <nav aria-label="Main navigation">
+
+                <ul class="nav-tabs-custom">
+
+                    <li>
+                        <a asp-controller="Chats"
+                           asp-action="Index"
+                           class="nav-link-custom">
+
+                            <i class="fas fa-comments"></i>
+                            Chats
+
+                            <span id="homeUnreadBadge"
+                                  class="xli-nav-unread-badge"
+                                  style="display: none;">
+                                0
+                            </span>
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a asp-controller="Statuses"
+                           asp-action="Index"
+                           class="nav-link-custom">
+
+                            <i class="fas fa-circle-play"></i>
+                            Status
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="nav-link-custom">
+
+                            <i class="fas fa-user"></i>
+                            Profile
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="nav-link-custom">
+
+                            <i class="fas fa-gear"></i>
+                            Settings
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#"
+                           class="nav-link-custom">
+
+                            <i class="fas fa-shield-halved"></i>
+                            Privacy
+
+                        </a>
+                    </li>
+
+                </ul>
+
+            </nav>
+
+            <form asp-controller="Account"
+                  asp-action="Logout"
+                  method="post"
+                  class="m-0">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit"
+                        class="nav-logout-btn">
+
+                    <i class="fas fa-sign-out-alt"></i>
+                    Log Out
+
+                </button>
+
+            </form>
+
+        </div>
+    }
+
+    <div class="xli-hero-wrapper">
+
+        <div class="xli-hero-card">
+
+            @if (SignInManager.IsSignedIn(User))
+            {
+                <div class="xli-brand-badge">
+                    <i class="fas fa-circle-check"></i>
+                    Next-Gen Messaging
+                </div>
+
+                <div>
+                    <img src="~/images/gemini-svg (1).svg"
+                         alt="XLiConnect Logo"
+                         class="xli-logo-img" />
+                </div>
+
+                <h1 class="xli-title">
+                    Welcome back, <strong>@displayName</strong>
+                </h1>
+
+                <p class="xli-description">
+                    Welcome to XLiConnect next gen messaging platform.
+                </p>
+
+                <div class="xli-actions">
+
+                    <form asp-controller="Account"
+                          asp-action="Logout"
+                          method="post"
+                          class="w-100">
+
+                        @Html.AntiForgeryToken()
+
+                        <button type="submit"
+                                class="xli-btn-danger">
+
+                            <i class="fas fa-arrow-right-from-bracket"></i>
+                            Log Out
+
+                        </button>
+
+                    </form>
+
+                </div>
+            }
+            else
+            {
+                <div class="xli-brand-badge">
+                    <i class="fas fa-comments"></i>
+                    Next-Gen Messaging
+                </div>
+
+                <div>
+                    <img src="~/images/gemini-svg (1).svg"
+                         alt="XLiConnect Logo"
+                         class="xli-logo-img" />
+                </div>
+
+                <p class="xli-description">
+                    Welcome to XLiConnect next gen messaging platform.
+                </p>
+
+                <div class="xli-actions">
+
+                    <a asp-controller="Account"
+                       asp-action="Register"
+                       class="xli-btn-primary">
+
+                        <i class="fas fa-user-plus"></i>
+                        Create Account
+
+                    </a>
+
+                    <a asp-controller="Account"
+                       asp-action="Login"
+                       class="xli-btn-outline">
+
+                        <i class="fas fa-sign-in-alt"></i>
+                        Log In
+
+                    </a>
+
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+</div>
+
+@if (SignInManager.IsSignedIn(User))
+{
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            updateHomeUnreadCount();
+
+            // Keep the Home navigation badge updated
+            // while the user remains on the Home page.
+            setInterval(updateHomeUnreadCount, 3000);
+
+        });
+
+        function updateHomeUnreadCount() {
+
+            fetch('/Chats/GetUnreadCount')
+                .then(response => {
+
+                    if (!response.ok) {
+                        throw new Error("Failed to get unread count.");
+                    }
+
+                    return response.json();
+
+                })
+                .then(data => {
+
+                    const badge =
+                        document.getElementById('homeUnreadBadge');
+
+                    if (!badge) {
+                        return;
+                    }
+
+                    const unreadCount =
+                        Number(data.unreadCount) || 0;
+
+                    if (unreadCount > 0) {
+
+                        badge.innerText = unreadCount;
+                        badge.style.display = 'inline-flex';
+
+                    } else {
+
+                        badge.innerText = '0';
+                        badge.style.display = 'none';
+
+                    }
+
+                })
+                .catch(error => {
+
+                    console.error(
+                        "Error fetching unread chat count:",
+                        error
+                    );
+
+                });
+        }
+    </script>
+}

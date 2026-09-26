@@ -1,0 +1,1317 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using XLiConnect.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@model List<UserStatus>
+
+@{
+    ViewData["Title"] = "Status Updates";
+
+    ApplicationUser? currentUser = null;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+    }
+
+    var displayName =
+        currentUser?.DisplayName
+        ?? currentUser?.UserName
+        ?? User.Identity?.Name
+        ?? "User";
+
+    var username =
+        currentUser?.UserName
+        ?? "";
+
+    var initial =
+        string.IsNullOrWhiteSpace(displayName)
+            ? "U"
+            : displayName.Substring(0, 1).ToUpperInvariant();
+
+    var otherStatuses =
+        ViewBag.OtherStatuses as List<UserStatus>
+        ?? new List<UserStatus>();
+}
+
+<style>
+
+    .xli-status-page {
+        background: #f0f2f5;
+        min-height: calc(100vh - 80px);
+        padding: 20px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                     "Segoe UI", Roboto, sans-serif;
+        color: #111b21;
+    }
+
+    .xli-status-container {
+        max-width: 1350px;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .xli-profile-bar {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 6px rgba(11, 20, 26, 0.08);
+        margin-bottom: 18px;
+    }
+
+    .xli-profile-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .xli-profile-avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #00a884;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .xli-profile-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .xli-profile-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111b21;
+    }
+
+    .xli-profile-username {
+        font-size: 0.82rem;
+        color: #667781;
+    }
+
+    .xli-you-badge {
+        margin-left: auto;
+        background: #d9fdd3;
+        color: #128c7e;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+
+    .xli-status-title {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 18px 22px;
+        box-shadow: 0 2px 6px rgba(11, 20, 26, 0.08);
+        margin-bottom: 18px;
+    }
+
+    .xli-status-title h2 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #111b21;
+    }
+
+    .xli-status-title p {
+        margin: 5px 0 0 0;
+        color: #667781;
+        font-size: 0.9rem;
+    }
+
+    .xli-status-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    /*
+        LEFT CARD
+        This section is intentionally visually different
+        from the other people's status section.
+    */
+    .xli-status-section-my {
+        background: #f0faf7;
+        border: 1px solid #c7ebe1;
+        border-radius: 14px;
+        box-shadow: 0 3px 10px rgba(11, 20, 26, 0.08);
+        padding: 20px;
+    }
+
+    /*
+        RIGHT CARD
+        This section has a different background so users
+        can immediately distinguish it from their own status.
+    */
+    .xli-status-section-other {
+        background: #f7f4ff;
+        border: 1px solid #ddd2f5;
+        border-radius: 14px;
+        box-shadow: 0 3px 10px rgba(11, 20, 26, 0.08);
+        padding: 20px;
+    }
+
+    .xli-section-heading {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e9edef;
+    }
+
+    .xli-section-heading i {
+        color: #00a884;
+        font-size: 1.05rem;
+    }
+
+    .xli-status-section-other .xli-section-heading i {
+        color: #7357b7;
+    }
+
+    .xli-section-heading h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .xli-upload-box {
+        border: 2px dashed #9edbd0;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #ffffff;
+        margin-bottom: 22px;
+    }
+
+    .xli-upload-box i {
+        font-size: 2rem;
+        color: #00a884;
+        margin-bottom: 10px;
+    }
+
+    .xli-upload-box p {
+        margin: 0 0 15px 0;
+        color: #667781;
+        font-size: 0.9rem;
+    }
+
+    .xli-file-input {
+        width: 100%;
+        font-size: 0.85rem;
+    }
+
+    .xli-post-button {
+        margin-top: 14px;
+        background: #00a884;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .xli-post-button:hover {
+        background: #01755c;
+    }
+
+    .xli-alert-success {
+        background: #d9fdd3;
+        color: #075e54;
+        padding: 10px 13px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 0.88rem;
+    }
+
+    .xli-alert-error {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 10px 13px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 0.88rem;
+    }
+
+    .xli-status-list {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .xli-status-card {
+        border: 1px solid #e9edef;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+        position: relative;
+    }
+
+    /*
+        OWN STATUS CARD
+        Smaller image so it does not visually compete
+        with other people's statuses.
+    */
+    .xli-my-status-card {
+        background: #ffffff;
+    }
+
+    .xli-my-status-image-wrapper {
+        background: #111b21;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        padding: 10px;
+    }
+
+    .xli-my-status-image {
+        display: block;
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .xli-status-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9edef;
+    }
+
+    .xli-status-user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .xli-status-user-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #00a884;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .xli-status-user-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .xli-status-user-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #111b21;
+    }
+
+    .xli-status-user-username {
+        font-size: 0.75rem;
+        color: #667781;
+    }
+
+    .xli-status-image-wrapper {
+        background: #111b21;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    .xli-status-image {
+        display: block;
+        width: 100%;
+        max-height: 500px;
+        object-fit: contain;
+    }
+
+    .xli-status-footer {
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #ffffff;
+    }
+
+    .xli-status-time {
+        color: #667781;
+        font-size: 0.75rem;
+    }
+
+    /*
+        VIEW BUTTON FOR OWN STATUSES
+    */
+    .xli-view-button {
+        border: none;
+        background: #00a884;
+        color: #ffffff;
+        border-radius: 7px;
+        padding: 6px 11px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.2s ease;
+    }
+
+    .xli-view-button:hover {
+        background: #01755c;
+    }
+
+    .xli-reply-button {
+        border: none;
+        background: #7357b7;
+        color: #ffffff;
+        border-radius: 7px;
+        padding: 6px 11px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.2s ease;
+    }
+
+    .xli-reply-button:hover {
+        background: #5d449b;
+    }
+
+    .xli-reply-composer {
+        display: none;
+        padding: 10px 12px;
+        border-top: 1px solid #e9edef;
+        background: #f8f9fa;
+    }
+
+    .xli-reply-composer.active {
+        display: block;
+    }
+
+    .xli-reply-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .xli-reply-input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #dfe5e7;
+        border-radius: 8px;
+        padding: 9px 11px;
+        font-size: 0.85rem;
+        outline: none;
+        background: #ffffff;
+    }
+
+    .xli-reply-input:focus {
+        border-color: #7357b7;
+    }
+
+    .xli-reply-send-button {
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 50%;
+        background: #7357b7;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .xli-reply-send-button:hover {
+        background: #5d449b;
+    }
+
+    .xli-reply-cancel-button {
+        border: none;
+        background: transparent;
+        color: #667781;
+        font-size: 0.76rem;
+        padding: 6px 2px;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+
+    .xli-reply-cancel-button:hover {
+        color: #111b21;
+    }
+
+    .xli-empty-status {
+        text-align: center;
+        padding: 35px 20px;
+        color: #8696a0;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.65);
+        border-radius: 10px;
+    }
+
+    .xli-empty-status i {
+        display: block;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: #b5c1c7;
+    }
+
+    /*
+        STATUS VIEW MODAL
+        Used only when the owner clicks View.
+    */
+    .xli-status-viewer {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.82);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        padding: 25px;
+    }
+
+    .xli-status-viewer.active {
+        display: flex;
+    }
+
+    .xli-status-viewer-content {
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .xli-status-viewer-image {
+        display: block;
+        max-width: 90vw;
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .xli-status-viewer-close {
+        position: absolute;
+        top: -45px;
+        right: 0;
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #111b21;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .xli-status-viewer-close:hover {
+        background: #ffffff;
+    }
+
+    @@media (max-width: 900px) {
+
+        .xli-status-page {
+            padding: 10px;
+        }
+
+        .xli-status-columns {
+            grid-template-columns: 1fr;
+        }
+
+    }
+
+</style>
+
+<div class="xli-status-page">
+
+    <div class="xli-status-container">
+
+        <!-- Current user profile bar -->
+
+        <div class="xli-profile-bar">
+
+            @if (currentUser != null &&
+                 !string.IsNullOrWhiteSpace(currentUser.ProfilePicturePath))
+            {
+                <img src="@currentUser.ProfilePicturePath"
+                     alt="@displayName"
+                     class="xli-profile-avatar" />
+            }
+            else
+            {
+                <span class="xli-profile-avatar-placeholder">
+                    @initial
+                </span>
+            }
+
+            <div class="xli-profile-details">
+
+                <span class="xli-profile-name">
+                    @displayName
+                </span>
+
+                <span class="xli-profile-username">
+                    @username
+                </span>
+
+            </div>
+
+            <span class="xli-you-badge">
+                You
+            </span>
+
+        </div>
+
+
+        <!-- Page heading -->
+
+        <div class="xli-status-title">
+
+            <h2>
+                Status Updates
+            </h2>
+
+            <p>
+                Share a status or see what other people have posted.
+            </p>
+
+        </div>
+
+
+        <div class="xli-status-columns">
+
+
+            <!-- LEFT: MY STATUS -->
+
+            <section class="xli-status-section-my">
+
+                <div class="xli-section-heading">
+
+                    <i class="fas fa-camera"></i>
+
+                    <h3>
+                        Share a new status
+                    </h3>
+
+                </div>
+
+
+                @if (TempData["StatusMessage"] != null)
+                {
+                    <div class="xli-alert-success">
+                        @TempData["StatusMessage"]
+                    </div>
+                }
+
+                @if (TempData["StatusError"] != null)
+                {
+                    <div class="xli-alert-error">
+                        @TempData["StatusError"]
+                    </div>
+                }
+
+
+                <div class="xli-upload-box">
+
+                    <i class="fas fa-image"></i>
+
+                    <p>
+                        Upload a photo to share as your status.
+                    </p>
+
+                    <form asp-controller="Statuses"
+                          asp-action="PostStatus"
+                          method="post"
+                          enctype="multipart/form-data">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="file"
+                               name="statusImage"
+                               class="form-control xli-file-input"
+                               accept="image/*"
+                               required />
+
+                        <button type="submit"
+                                class="xli-post-button">
+
+                            <i class="fas fa-upload"
+                               style="margin-right: 6px;"></i>
+
+                            Post Status
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <div class="xli-section-heading">
+
+                    <i class="fas fa-history"></i>
+
+                    <h3>
+                        Your Status
+                    </h3>
+
+                </div>
+
+
+                @if (Model != null && Model.Any())
+                {
+                    <div class="xli-status-list">
+
+                        @foreach (var status in Model)
+                        {
+                            var myStatusDate =
+                                status.PostedAt
+                                    .ToLocalTime()
+                                    .ToString("dd MMMM yyyy, HH:mm");
+
+                            <div class="xli-status-card xli-my-status-card">
+
+                                <!-- Smaller owner status image -->
+
+                                <div class="xli-my-status-image-wrapper">
+
+                                    <img src="@status.ImagePath"
+                                         alt="Your status"
+                                         class="xli-my-status-image" />
+
+                                </div>
+
+                                <div class="xli-status-footer">
+
+                                    <span class="xli-status-time">
+                                        Posted @myStatusDate
+                                    </span>
+
+                                    <button type="button"
+                                            class="xli-view-button"
+                                            onclick="viewMyStatus('@status.ImagePath')">
+
+                                        <i class="fas fa-eye"></i>
+
+                                        View
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+                }
+                else
+                {
+                    <div class="xli-empty-status">
+
+                        <i class="fas fa-images"></i>
+
+                        You have not posted any statuses yet.
+
+                    </div>
+                }
+
+            </section>
+
+
+            <!-- RIGHT: OTHER PEOPLE'S STATUS -->
+
+            <section class="xli-status-section-other">
+
+                <div class="xli-section-heading">
+
+                    <i class="fas fa-users"></i>
+
+                    <h3>
+                        View other people's status updates
+                    </h3>
+
+                </div>
+
+
+                @if (otherStatuses.Any())
+                {
+                    <div class="xli-status-list">
+
+                        @foreach (var status in otherStatuses)
+                        {
+                            var otherDisplayName =
+                                status.User?.DisplayName
+                                ?? status.User?.UserName
+                                ?? "User";
+
+                            var otherUsername =
+                                status.User?.UserName
+                                ?? "";
+
+                            var otherInitial =
+                                string.IsNullOrWhiteSpace(otherDisplayName)
+                                    ? "U"
+                                    : otherDisplayName
+                                        .Substring(0, 1)
+                                        .ToUpperInvariant();
+
+                            var otherStatusDate =
+                                status.PostedAt
+                                    .ToLocalTime()
+                                    .ToString("dd MMM yyyy, HH:mm");
+
+                            var replyInputId =
+                                "replyInput_" + status.Id;
+
+                            var replyComposerId =
+                                "replyComposer_" + status.Id;
+
+                            <div class="xli-status-card">
+
+                                <!-- Status owner -->
+
+                                <div class="xli-status-user">
+
+                                    @if (status.User != null &&
+                                         !string.IsNullOrWhiteSpace(
+                                             status.User.ProfilePicturePath))
+                                    {
+                                        <img src="@status.User.ProfilePicturePath"
+                                             alt="@otherDisplayName"
+                                             class="xli-status-user-avatar" />
+                                    }
+                                    else
+                                    {
+                                        <span class="xli-status-user-placeholder">
+                                            @otherInitial
+                                        </span>
+                                    }
+
+                                    <div class="xli-status-user-details">
+
+                                        <span class="xli-status-user-name">
+                                            @otherDisplayName
+                                        </span>
+
+                                        <span class="xli-status-user-username">
+                                            @otherUsername
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- Status image -->
+
+                                <div class="xli-status-image-wrapper">
+
+                                    <img src="@status.ImagePath"
+                                         alt="Status posted by @otherDisplayName"
+                                         class="xli-status-image" />
+
+                                </div>
+
+
+                                <!-- Status footer -->
+
+                                <div class="xli-status-footer">
+
+                                    <span class="xli-status-time">
+                                        Posted @otherStatusDate
+                                    </span>
+
+                                    <button type="button"
+                                            class="xli-reply-button"
+                                            onclick="showReplyComposer(@status.Id)">
+
+                                        <i class="fas fa-reply"></i>
+
+                                        Reply
+
+                                    </button>
+
+                                </div>
+
+
+                                <!-- Reply composer -->
+
+                                <div id="@replyComposerId"
+                                     class="xli-reply-composer">
+
+                                    <div class="xli-reply-input-row">
+
+                                        <input type="text"
+                                               id="@replyInputId"
+                                               class="xli-reply-input"
+                                               placeholder="Reply to this status..."
+                                               maxlength="1000"
+                                               onkeypress="handleStatusReplyKeyPress(event, @status.Id)" />
+
+                                        <button type="button"
+                                                class="xli-reply-send-button"
+                                                onclick="sendStatusReply(@status.Id)"
+                                                title="Send reply">
+
+                                            <i class="fas fa-paper-plane"></i>
+
+                                        </button>
+
+                                    </div>
+
+                                    <button type="button"
+                                            class="xli-reply-cancel-button"
+                                            onclick="hideReplyComposer(@status.Id)">
+
+                                        Cancel
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+                }
+                else
+                {
+                    <div class="xli-empty-status">
+
+                        <i class="fas fa-user-friends"></i>
+
+                        No one else has posted a status yet.
+
+                    </div>
+                }
+
+            </section>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!--
+    Owner status viewer.
+    This is hidden until the owner clicks View.
+-->
+
+<div id="xliStatusViewer"
+     class="xli-status-viewer"
+     onclick="closeMyStatus(event)">
+
+    <div class="xli-status-viewer-content">
+
+        <button type="button"
+                class="xli-status-viewer-close"
+                onclick="closeMyStatus()"
+                title="Close">
+
+            <i class="fas fa-times"></i>
+
+        </button>
+
+        <img id="xliStatusViewerImage"
+             src=""
+             alt="Your status"
+             class="xli-status-viewer-image" />
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /*
+        ============================================================
+        OWN STATUS VIEWER
+        ============================================================
+    */
+
+    function viewMyStatus(imagePath) {
+
+        const viewer =
+            document.getElementById(
+                'xliStatusViewer'
+            );
+
+        const image =
+            document.getElementById(
+                'xliStatusViewerImage'
+            );
+
+        if (!viewer || !image) {
+            return;
+        }
+
+        image.src = imagePath;
+
+        viewer.classList.add('active');
+
+        document.body.style.overflow = 'hidden';
+    }
+
+
+    function closeMyStatus(event) {
+
+        /*
+            If the user clicked the dark background itself,
+            close the viewer.
+
+            If they clicked the image/content, keep it open.
+        */
+
+        if (event &&
+            event.target &&
+            event.target.id !== 'xliStatusViewer') {
+
+            return;
+        }
+
+        const viewer =
+            document.getElementById(
+                'xliStatusViewer'
+            );
+
+        const image =
+            document.getElementById(
+                'xliStatusViewerImage'
+            );
+
+        if (viewer) {
+
+            viewer.classList.remove('active');
+
+        }
+
+        if (image) {
+
+            image.src = '';
+
+        }
+
+        document.body.style.overflow = '';
+    }
+
+
+    /*
+        Allow ESC to close the status viewer.
+    */
+
+    document.addEventListener(
+        'keydown',
+        function (event) {
+
+            if (event.key === 'Escape') {
+
+                const viewer =
+                    document.getElementById(
+                        'xliStatusViewer'
+                    );
+
+                if (viewer &&
+                    viewer.classList.contains('active')) {
+
+                    closeMyStatus();
+
+                }
+            }
+
+        }
+    );
+
+
+    /*
+        ============================================================
+        STATUS REPLY
+        ============================================================
+    */
+
+    function showReplyComposer(statusId) {
+
+        const composer =
+            document.getElementById(
+                'replyComposer_' + statusId
+            );
+
+        const input =
+            document.getElementById(
+                'replyInput_' + statusId
+            );
+
+        if (!composer) {
+            return;
+        }
+
+        composer.classList.add('active');
+
+        if (input) {
+            input.focus();
+        }
+    }
+
+
+    function hideReplyComposer(statusId) {
+
+        const composer =
+            document.getElementById(
+                'replyComposer_' + statusId
+            );
+
+        const input =
+            document.getElementById(
+                'replyInput_' + statusId
+            );
+
+        if (composer) {
+            composer.classList.remove('active');
+        }
+
+        if (input) {
+            input.value = '';
+        }
+    }
+
+
+    function handleStatusReplyKeyPress(event, statusId) {
+
+        if (event.key === 'Enter') {
+
+            event.preventDefault();
+
+            sendStatusReply(statusId);
+        }
+    }
+
+
+    function sendStatusReply(statusId) {
+
+        const input =
+            document.getElementById(
+                'replyInput_' + statusId
+            );
+
+        if (!input) {
+            return;
+        }
+
+        const content =
+            input.value.trim();
+
+        if (content === '') {
+            return;
+        }
+
+
+        const composer =
+            document.getElementById(
+                'replyComposer_' + statusId
+            );
+
+        const sendButton =
+            composer
+                ? composer.querySelector(
+                    '.xli-reply-send-button'
+                )
+                : null;
+
+
+        if (sendButton) {
+
+            sendButton.disabled = true;
+
+            sendButton.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+
+        const antiForgeryToken =
+            document.querySelector(
+                'input[name="__RequestVerificationToken"]'
+            )?.value || '';
+
+
+        /*
+            Send the StatusId together with the text.
+
+            The controller uses this ID to find the original
+            status and save its ImagePath into ChatMessage.
+
+            This allows the inbox to display the exact
+            status picture that was replied to.
+        */
+
+        fetch('/Statuses/ReplyToStatus', {
+
+            method: 'POST',
+
+            headers: {
+
+                'Content-Type':
+                    'application/json',
+
+                'RequestVerificationToken':
+                    antiForgeryToken
+
+            },
+
+            body: JSON.stringify({
+
+                statusId: statusId,
+
+                content: content
+
+            })
+
+        })
+        .then(response => {
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'The status reply could not be sent.'
+                );
+            }
+
+            return response.json();
+
+        })
+        .then(result => {
+
+            if (result.success) {
+
+                hideReplyComposer(statusId);
+
+                showReplySuccess();
+
+            }
+            else {
+
+                throw new Error(
+                    'The status reply could not be sent.'
+                );
+            }
+
+        })
+        .catch(error => {
+
+            console.error(
+                'Error sending status reply:',
+                error
+            );
+
+            alert(
+                'The status reply could not be sent. Please try again.'
+            );
+
+        })
+        .finally(() => {
+
+            if (sendButton) {
+
+                sendButton.disabled = false;
+
+                sendButton.innerHTML =
+                    '<i class="fas fa-paper-plane"></i>';
+            }
+
+        });
+    }
+
+
+    function showReplySuccess() {
+
+        const existingAlert =
+            document.getElementById(
+                'statusReplySuccess'
+            );
+
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+
+        const alertElement =
+            document.createElement('div');
+
+        alertElement.id =
+            'statusReplySuccess';
+
+        alertElement.className =
+            'xli-alert-success';
+
+        alertElement.style.position =
+            'fixed';
+
+        alertElement.style.top =
+            '20px';
+
+        alertElement.style.right =
+            '20px';
+
+        alertElement.style.zIndex =
+            '9999';
+
+        alertElement.style.boxShadow =
+            '0 4px 12px rgba(0,0,0,0.15)';
+
+        alertElement.innerHTML =
+            '<i class="fas fa-check-circle" ' +
+            'style="margin-right: 6px;"></i>' +
+            'Reply sent successfully.';
+
+
+        document.body.appendChild(
+            alertElement
+        );
+
+
+        setTimeout(function () {
+
+            alertElement.remove();
+
+        }, 3000);
+    }
+
+</script>

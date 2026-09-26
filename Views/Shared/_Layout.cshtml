@@ -1,0 +1,244 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using XLiConnect.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    ApplicationUser? currentUser = null;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+    }
+
+    var displayName = currentUser?.DisplayName ?? currentUser?.UserName ?? User.Identity?.Name ?? "User";
+    var initial = string.IsNullOrWhiteSpace(displayName)
+        ? "U"
+        : displayName.Substring(0, 1).ToUpperInvariant();
+}<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - XLiConnect</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: #f0f2f5;
+                color: #111b21;
+            }
+
+            .top-bar {
+                min-height: 72px;
+                padding: 10px 24px;
+                background: #fff;
+                border-bottom: 1px solid #d1d7db;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 24px;
+            }
+
+            .user-info {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #111b21;
+                font-weight: 600;
+                text-decoration: none;
+                min-width: 180px;
+            }
+
+            .profile-img,
+            .profile-initial {
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+                border-radius: 50%;
+            }
+
+            .profile-img {
+                object-fit: cover;
+            }
+
+            .profile-initial {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #00a884;
+                color: #fff;
+                font-size: 18px;
+                font-weight: 700;
+            }
+
+            .nav-tabs-custom {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            .nav-link-custom {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                padding: 9px 14px;
+                border-radius: 8px;
+                color: #54656f;
+                font-weight: 600;
+                text-decoration: none;
+                transition: background-color .2s, color .2s;
+            }
+
+                .nav-link-custom:hover {
+                    color: #00a884;
+                    background: rgba(0, 168, 132, .08);
+                }
+
+            .badge-red {
+                background-color: #dc3545;
+                color: white;
+                font-size: 0.75rem;
+                padding: 2px 7px;
+                border-radius: 10px;
+                font-weight: 700;
+                margin-left: 5px;
+            }
+
+            .logout-form {
+                margin: 0;
+            }
+
+            .logout-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                padding: 9px 15px;
+                border: 0;
+                border-radius: 8px;
+                background: #dc3545;
+                color: #fff;
+                font-weight: 600;
+                transition: background-color .2s;
+            }
+
+                .logout-btn:hover {
+                    background: #bb2d3b;
+                }
+
+            .guest-navigation {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .main-content {
+                padding: 24px;
+            }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)</head><body>
+    <header class="top-bar">
+        @if (SignInManager.IsSignedIn(User))
+        {
+            <a asp-controller="Home" asp-action="Index" class="user-info">
+                @if (currentUser != null && !string.IsNullOrWhiteSpace(currentUser.ProfilePicturePath))
+                {
+                    <img src="@currentUser.ProfilePicturePath" alt="@displayName's profile picture" class="profile-img" />
+                }
+                else
+                {
+                    <span class="profile-initial">@initial</span>
+                }
+                <span>@displayName</span>
+            </a>
+
+            <nav aria-label="Main navigation">
+                <ul class="nav-tabs-custom">
+                    <li>
+                        <a asp-controller="Chats" asp-action="Index" class="nav-link-custom">
+                            <i class="fas fa-comments"></i>
+                            Chats
+                            <span class="badge-red" id="navUnreadBadge" style="display: none;">0</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link-custom">
+                            <i class="fas fa-user"></i>
+                            Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link-custom">
+                            <i class="fas fa-gear"></i>
+                            Settings
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link-custom">
+                            <i class="fas fa-shield-halved"></i>
+                            Privacy
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Log Out
+                </button>
+            </form>
+        }
+        else
+        {
+            <a asp-controller="Home" asp-action="Index" class="user-info" style="text-decoration:none;">
+                <span style="font-weight: 800; font-size: 1.25rem; color: #0d6efd;">XLiConnect</span>
+            </a>
+
+            <div class="guest-navigation">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-outline-success">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Log In
+                </a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-success">
+                    <i class="fas fa-user-plus"></i>
+                    Create Account
+                </a>
+            </div>
+        }
+    </header>
+
+    <main class="main-content">
+        @RenderBody()
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/Chats/GetUnreadCount')
+                .then(response => response.json())
+                .then(data => {
+                    let badge = document.getElementById('navUnreadBadge');
+                    if (badge) {
+                        if (data.unreadCount > 0) {
+                            badge.innerText = data.unreadCount;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(err => console.error("Error fetching global unread count:", err));
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)</body></html>

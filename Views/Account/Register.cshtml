@@ -1,0 +1,237 @@
+﻿@model XLiConnect.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Create Account";
+}
+
+<style>
+    .auth-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 85vh;
+        padding: 2rem 1rem;
+        background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('/images/Loginandregister.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        border-radius: 24px;
+        margin: 0 1rem 1rem 1rem;
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 480px;
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+        padding: 3rem 2.5rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0, 168, 132, 0.15);
+    }
+
+    .auth-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #00a884, #20c997, #0d6efd);
+    }
+
+    .auth-brand-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        background: rgba(0, 168, 132, 0.1);
+        color: #00a884;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .auth-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
+    }
+
+    .auth-subtitle {
+        font-size: 1rem;
+        color: #64748b;
+        margin-bottom: 2rem;
+    }
+
+    .form-group-custom {
+        margin-bottom: 1.25rem;
+        text-align: left;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        color: #94a3b8;
+        font-size: 1rem;
+        pointer-events: none;
+    }
+
+    .form-control, .form-control:focus {
+        width: 100%;
+        border-radius: 12px;
+        padding: 0.8rem 1rem 0.8rem 2.75rem;
+        border: 1.5px solid #cbd5e1;
+        background-color: #f8fafc;
+        font-size: 0.95rem;
+        color: #0f172a;
+        transition: all 0.2s ease;
+    }
+
+    input[type="file"].form-control {
+        padding-left: 2.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #00a884;
+        background-color: #ffffff;
+        box-shadow: 0 0 0 4px rgba(0, 168, 132, 0.12);
+        outline: none;
+    }
+
+    .btn-submit {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #00a884;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.9rem 1.5rem;
+        border-radius: 12px;
+        text-decoration: none;
+        box-shadow: 0 10px 20px rgba(0, 168, 132, 0.25);
+        transition: all 0.2s ease;
+        border: none;
+        margin-top: 1rem;
+        cursor: pointer;
+    }
+
+    .btn-submit:hover {
+        background: #008f72;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 24px rgba(0, 168, 132, 0.35);
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+        font-size: 0.95rem;
+        color: #64748b;
+    }
+
+    .auth-footer a {
+        color: #00a884;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+
+    .auth-footer a:hover {
+        color: #008f72;
+        text-decoration: underline;
+    }
+
+    .text-danger.small {
+        font-size: 0.825rem;
+        margin-top: 0.35rem;
+        display: block;
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card text-center">
+        <div class="auth-brand-badge">
+            <i class="fas fa-user-plus"></i> Get Started
+        </div>
+
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join XLiConnect and start chatting today</p>
+
+        <form asp-action="Register" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3 small"></div>
+
+            <div class="form-group-custom">
+                <label asp-for="Username" class="form-label">Username</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user input-icon"></i>
+                    <input asp-for="Username" class="form-control" placeholder="Enter your username" />
+                </div>
+                <span asp-validation-for="Username" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group-custom">
+                <label asp-for="Age" class="form-label">Age</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-calendar-days input-icon"></i>
+                    <input asp-for="Age" type="number" class="form-control" placeholder="Enter your age" />
+                </div>
+                <span asp-validation-for="Age" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group-custom">
+                <label asp-for="ProfilePicture" class="form-label">Profile Picture</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-image input-icon"></i>
+                    <input asp-for="ProfilePicture" type="file" class="form-control" accept="image/*" />
+                </div>
+                <span asp-validation-for="ProfilePicture" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group-custom">
+                <label asp-for="Password" class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input asp-for="Password" type="password" class="form-control" placeholder="Create a secure password" />
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-user-check"></i> Register
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? <a asp-action="Login">Log In</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
